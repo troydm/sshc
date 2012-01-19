@@ -1,0 +1,7 @@
+# sshc config example
+# copy this file to your ~/.sshc
+
+connection1=ssh server
+connection2=ssh -2 anotherserver
+connection3=ssh user@yetanotherserver
+

@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+# -----------------------------------------------------------------------
+# sshc - ssh connection manager licensed under LGPLv3 (see LICENSE file)
+# written in pure bash by Dmitry Geurkov (d.geurkov@gmail.com)
+# -----------------------------------------------------------------------
+
+SSHC_VERSION=0.1
+SSHC_CONFIG=~/.sshc
+
+# No arguments specified so print some usage info
+if [ "x$1" = "x" ]; then
+        echo "sshc v$SSHC_VERSION - ssh connection manager licensed under LGPLv3 terms"
+        echo "written in bash by Dmitry Geurkov (d.geurkov@gmail.com)"
+        echo ""
+        echo "edit your ~/.sshc file to add connections"
+        echo ""
+        echo "sshc [ssh parameters] connection [command]"
+        exit 1 
+fi
+
+# Get command arguments
+CONN_ARG=${@:1:($#-1)}
+CONN=`cat $SSHC_CONFIG | grep ^${@:(-1)}=`
+CONN_CMD=
+
+# If connection not found test if it's command is specified
+# and connection is the last second parameter
+if [[ "x$CONN" = "x" && "$#" != "1" ]]; then
+        CONN_ARG=${@:1:($#-2)}
+        CONN=`cat $SSHC_CONFIG | grep ^${@:(-2):1}=`
+        CONN_CMD=${@:(-1)}
+fi
+
+# If not connection found in config, print all available connections
+if [ "x$CONN" = "x" ]; then
+        echo "Available connections:"
+        cat $SSHC_CONFIG | grep ^[^#].*= | cut -d "=" -f 1
+        exit 1
+fi
+
+# Get command line out of connection configuration
+CONN=`echo $CONN | cut -d "=" -f 2`
+# Get command without parameters
+CMD=`echo $CONN | cut -d " " -f 1`
+# Get connection parameters
+CONN=`echo $CONN | cut -d " " -f 2-`
+
+# Preparing final command
+CONN="$CMD $CONN_ARG $CONN $CONN_CMD"
+
+# Executing prepared command
+echo "Executing $CONN"
+eval $CONN
+
