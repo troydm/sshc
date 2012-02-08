@@ -13,6 +13,7 @@ Do this in command line::
 
     sudo cp ./sshc /usr/local/bin
     cp ./sshc.config.example ~/.sshc
+    chmod 0700 ~/.sshc
 
 Then edit your ``~/.sshc`` and add your connections
 
