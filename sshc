@@ -40,7 +40,7 @@ if [ "x$CONN" = "x" ]; then
 fi
 
 # Get command line out of connection configuration
-CONN=`echo $CONN | cut -d "=" -f 2`
+CONN=`echo $CONN | cut -d "=" -f 2-`
 # Get command without parameters
 CMD=`echo $CONN | cut -d " " -f 1`
 # Get connection parameters
