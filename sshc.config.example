@@ -1,7 +1,30 @@
 # sshc config example
 # copy this file to your ~/.sshc
 
-connection1=ssh server
-connection2=ssh -2 anotherserver
-connection3=ssh user@yetanotherserver
 
+connection "name" do
+    port 22
+    user "user"
+    host "host"
+    path "path/to/dir" # only for sftp command
+end
+
+connection "name2" do
+    compression
+    port 22
+    user "user"
+    host "31.146.139.22"
+    local ["8080","localhost","80"]
+    remote ["80","localhost","8080"]
+end
+
+##### other options that can be included into connection definition
+# protocol 2
+# x_forwarding
+# trusted_x_forwarding
+# no_x_forwarding
+# no_command
+# option "TCPKeepAlive"
+# option "ServerAliveCountMax", 3
+# command "ls -lh"
+# custom ["-2","-N"]

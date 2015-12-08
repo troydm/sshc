@@ -4,7 +4,7 @@ sshc - ssh connection manager for command line users
 --------------------------------------------------------
 licenesed under LGPLv3 terms (see LICENSE file)
 --------------------------------------------------------
-written in bash by Dmitry Geurkov (d.geurkov@gmail.com)
+written in Ruby by Dmitry Geurkov (d.geurkov@gmail.com)
 --------------------------------------------------------
 
 How to install?
@@ -41,3 +41,10 @@ To connect to server and execute command ls::
 
     sshc connection ls
 
+Also you can sftp to your connection::
+
+    sshc sftp [sftp arguments] connection[:path]
+
+And scp files between your connections::
+
+    sshc scp [scp arguments] [from:]path [to:]path

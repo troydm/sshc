@@ -1,55 +1,378 @@
-#!/usr/bin/env bash
+#!/usr/bin/env ruby
 
 # -----------------------------------------------------------------------
 # sshc - ssh connection manager licensed under LGPLv3 (see LICENSE file)
-# written in pure bash by Dmitry Geurkov (d.geurkov@gmail.com)
+# written in Ruby by Dmitry Geurkov (d.geurkov@gmail.com)
 # -----------------------------------------------------------------------
 
-SSHC_VERSION=0.1
-SSHC_CONFIG=~/.sshc
+SSHC_VERSION=0.2
+SSHC_CONFIG="~/.sshc"
 
-# No arguments specified so print some usage info
-if [ "x$1" = "x" ]; then
-        echo "sshc v$SSHC_VERSION - ssh connection manager licensed under LGPLv3 terms"
-        echo "written in bash by Dmitry Geurkov (d.geurkov@gmail.com)"
-        echo ""
-        echo "edit your ~/.sshc file to add connections"
-        echo ""
-        echo "sshc [ssh parameters] connection [command]"
-        exit 1 
-fi
+$connections = {}
+$options = nil
 
-# Get command arguments
-CONN_ARG=${@:1:($#-1)}
-CONN=`cat $SSHC_CONFIG | grep ^${@:(-1)}=`
-CONN_CMD=
+def connection(name)
+    $options = { :name => name, :user => ENV['USERNAME'], :port => 22, :host => "localhost",
+                 :ssh_command => 'ssh', :sftp_command => 'sftp', :scp_command => 'scp' }
+    yield $options
+    options = $options
+    $connections[$options[:name]] = $options
+    $options = nil
+end
 
-# If connection not found test if it's command is specified
-# and connection is the last second parameter
-if [[ "x$CONN" = "x" && "$#" != "1" ]]; then
-        CONN_ARG=${@:1:($#-2)}
-        CONN=`cat $SSHC_CONFIG | grep ^${@:(-2):1}=`
-        CONN_CMD=${@:(-1)}
-fi
+def name(name)
+    $options[:name] = name.to_s
+end
 
-# If not connection found in config, print all available connections
-if [ "x$CONN" = "x" ]; then
-        echo "Available connections:"
-        cat $SSHC_CONFIG | grep ^[^#].*= | cut -d "=" -f 1
+def user(name)
+    $options[:user] = name.to_s
+end
+
+def password(password)
+    $options[:password] = password.to_s
+end
+
+def port(number)
+    $options[:port] = number.to_i
+end
+
+def host(name)
+    $options[:host] = name.to_s
+end
+
+def compression
+    $options[:compression] = true
+end
+
+def protocol(version)
+    $options[:protocol] = version.to_i
+end
+
+def ssh_command(path)
+    $options[:ssh_command] = path.to_s
+end
+
+def sftp_command(path)
+    $options[:sftp_command] = path.to_s
+end
+
+def identity(path)
+    $options[:identity] = path.to_s
+end
+
+def path(path)
+    $options[:path] = path.to_s
+end
+
+def option(*args)
+    case (args.length)
+    when 1
+        if $options[:option]
+            $options[:option] << args[0].to_s
+        else
+            $options[:option] = [args[0].to_s]
+        end
+    when 2
+        if $options[:option]
+            $options[:option] << args[0].to_s+"="+args[1].to_s
+        else
+            $options[:option] = [args[0].to_s+"="+args[1].to_s]
+        end
+    end
+end
+
+def remote(*args)
+    r = nil
+    case (args.length)
+    when 3
+        args.map! {|i| i.to_s }
+        r = args.join(':')
+    when 4
+        args.map! {|i| i.to_s }
+        r = args.join(':')
+    end
+    if $options[:remote]
+        $options[:remote] << r
+    else
+        $options[:remote] = [r]
+    end
+end
+
+def local(*args)
+    l = nil
+    case (args.length)
+    when 3
+        args.map! {|i| i.to_s }
+        l = args.join(':')
+    when 4
+        args.map! {|i| i.to_s }
+        l = args.join(':')
+    end
+    if $options[:local]
+        $options[:local] << l
+    else
+        $options[:local] = [l]
+    end
+end
+
+def x_forwarding
+    $options[:x_forwarding] = true
+end
+
+def trusted_x_forwarding
+    $options[:trusted_x_forwarding] = true
+end
+
+def no_x_forwarding
+    $options[:x_forwarding] = false
+end
+
+def no_command
+    $options[:no_command] = true
+end
+
+def command(cmd)
+    $options[:command] = cmd.to_s
+end
+
+def custom(*args)
+    args.map! {|i| i.to_s }
+    $options[:custom] = args
+end
+
+load SSHC_CONFIG
+
+$args = {}
+
+ARGV.each do |i|
+    if i == '--help'
+        puts "Usage: sshc [ssh options] name"
+        exit 0
+    end
+end
+
+def buildSFTPArgs(connection)
+    args = []
+    connection.each_key do |k|
+        if k == :compression
+            args.push('-C')
+        elsif k == :protocol
+            args.push('-'+connection[:protocol].to_s)
+        elsif k == :verbose
+            args.push('-v')
+        elsif k == :identity
+            args.push('-i')
+            args.push(connection[:identity])
+        elsif k == :port and !(connection[:port] == 22)
+            args.push('-P')
+            args.push(connection[:port].to_s)
+        elsif k == :option
+            connection[:option].each do |o|
+                args.push('-o')
+                args.push(o)
+            end
+        end
+    end
+    if connection[:custom]
+        args += connection[:custom]
+    end
+    return args
+end
+
+def buildConnectionArgs(connection)
+    args = []
+    connection.each_key do |k|
+        if k == :compression
+            args.push('-C')
+        elsif k == :verbose
+            args.push('-v')
+        elsif k == :protocol
+            args.push('-'+connection[:protocol].to_s)
+        elsif k == :no_command
+            args.push('-N')
+        elsif k == :trusted_x_forwarding
+            args.push('-Y')
+        elsif k == :x_forwarding
+            if connection[:x_forwarding]
+                args.push('-X')
+            else
+                args.push('-x')
+            end
+        elsif k == :identity
+            args.push('-i')
+            args.push(connection[:identity])
+        elsif k == :port and !(connection[:port] == 22)
+            args.push('-p')
+            args.push(connection[:port].to_s)
+        elsif k == :remote
+            connection[:remote].each do |r|
+                args.push('-R')
+                args.push(r)
+            end
+        elsif k == :local
+            connection[:local].each do |l|
+                args.push('-L')
+                args.push(l)
+            end
+        elsif k == :option
+            connection[:option].each do |o|
+                args.push('-o')
+                args.push(o)
+            end
+        end
+    end
+    if connection[:custom]
+        args += connection[:custom]
+    end
+    return args
+end
+
+if ARGV.length == 0
+    puts 'Available connections:'
+    $connections.each_key do |name|
+        puts name
+    end
+elsif ARGV.first == 'scp'
+    ARGV.slice!(0)
+    if ARGV.count <= 1
+        puts 'Expecting two arguments for scp'
         exit 1
-fi
+    end
+    from = ARGV[-2]
+    from_name = nil
+    from_path = nil
+    from_con = nil
+    to = ARGV[-1]
+    to_name = nil
+    to_path = nil
+    to_con = nil
+    ARGV.pop
+    ARGV.pop
 
-# Get command line out of connection configuration
-CONN=`echo $CONN | cut -d "=" -f 2-`
-# Get command without parameters
-CMD=`echo $CONN | cut -d " " -f 1`
-# Get connection parameters
-CONN=`echo $CONN | cut -d " " -f 2-`
+    if from.index(':')
+        from_name = from.slice(0,from.index(':'))
+        from_path = from.slice(from.index(':')+1,from.size - from.index(':')-1)
+    end
 
-# Preparing final command
-CONN="$CMD $CONN_ARG $CONN $CONN_CMD"
+    if to.index(':')
+        to_name = to.slice(0,to.index(':'))
+        to_path = to.slice(to.index(':')+1,to.size - to.index(':')-1)
+    end
 
-# Executing prepared command
-echo "Executing $CONN"
-eval $CONN
+    if from_name
+        if !$connections[from_name]
+            puts 'Invalid connection name: '+from_name
+            exit 1
+        end
+        from_con = $connections[from_name]
+    end
 
+    if to_name
+        if !$connections[to_name]
+            puts 'Invalid connection name: '+to_name
+            exit 1
+        end
+        to_con = $connections[to_name]
+    end
+
+    scp_cmd = 'scp'
+
+    args = nil
+    if from_con
+        scp_cmd = from_con[:scp_command]
+        args = buildSFTPArgs(from_con)
+        user = from_con[:user] ? from_con[:user]+'@' : ''
+        from = user+from_con[:host]+':'+from_path
+    end
+
+    if to_con
+        scp_cmd = to_con[:scp_command]
+        if !args
+            args = buildSFTPArgs(to_con)
+        end
+        user = to_con[:user] ? to_con[:user]+'@' : ''
+        to = user+to_con[:host]+':'+to_path
+    end
+
+    scp_options = Array.new(ARGV)
+    args += scp_options
+    args = args.join(" ")
+    if args != ""
+        args += " "
+    end
+
+    command = scp_cmd+" "+args+from+" "+to
+    puts "Executing: "+command
+    exec(command)
+elsif ARGV.first == 'sftp'
+    ARGV.slice!(0)
+    name = ARGV.last
+    ARGV.pop
+
+    path = nil
+
+    if name.index(':')
+        path = name.slice(name.index(':')+1,name.size - name.index(':')-1)
+        name = name.slice(0,name.index(':'))
+    end
+
+    connection = $connections[name]
+    if !$connections[name]
+        puts 'Invalid connection name: '+name
+        exit 1
+    end
+
+    args = buildSFTPArgs(connection)
+
+    sftp_options = Array.new(ARGV)
+    args += sftp_options
+    args = args.join(" ")
+    if args != ""
+        args += " "
+    end
+
+    user = connection[:user] ? connection[:user]+"@" : ""
+    if !path
+        path = connection[:path] ? ":"+connection[:path] : ""
+    else
+        path = ":"+path
+    end
+    command = connection[:sftp_command]+" "+args+user+connection[:host]+path
+    puts "Executing: "+command
+    exec(command)
+else
+    name = ARGV.last
+    cmd = nil
+    if !$connections[name] and ARGV.count > 1
+        if $connections[ARGV[ARGV.count-2]]
+            cmd = name                
+            name = ARGV[ARGV.count-2] 
+            ARGV.pop
+        end
+    end
+    if !$connections[name]
+        puts 'Invalid connection name: '+name
+        exit 1
+    end
+    ARGV.pop
+
+    connection = $connections[name]
+
+    args = buildConnectionArgs(connection)
+
+    ssh_options = Array.new(ARGV)
+    args += ssh_options
+    args = args.join(" ")
+    if args != ""
+        args += " "
+    end
+    user = connection[:user] ? connection[:user]+"@" : ""
+    command = connection[:ssh_command]+" "+args+user+connection[:host]
+    if cmd.nil? and connection[:command]
+        command += " "+connection[:command]
+    elsif not cmd.nil?
+        command += " "+cmd
+    end
+    puts "Executing: "+command
+    exec(command)
+end
