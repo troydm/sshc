@@ -24,6 +24,10 @@ def name(name)
     $options[:name] = name.to_s
 end
 
+def desc(description)
+    $options[:desc] = description.to_s
+end
+
 def user(name)
     $options[:user] = name.to_s
 end
@@ -146,7 +150,10 @@ $args = {}
 
 ARGV.each do |i|
     if i == '--help'
-        puts "Usage: sshc [ssh options] name"
+        puts "sshc usage:"
+        puts "sshc [ssh options] name"
+        puts "sshc scp [scp options] from[:/path] to[:/path]"
+        puts "sshc sftp [sftp options] name"
         exit 0
     end
 end
@@ -230,7 +237,7 @@ end
 if ARGV.length == 0
     puts 'Available connections:'
     $connections.each_key do |name|
-        puts name
+        puts name+($connections[name][:desc] ? " - "+$connections[name][:desc] : "")
     end
 elsif ARGV.first == 'scp'
     ARGV.slice!(0)

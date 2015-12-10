@@ -10,6 +10,7 @@ connection "name" do
 end
 
 connection "name2" do
+    desc "Description"
     compression
     port 22
     user "user"
