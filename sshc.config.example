@@ -15,8 +15,8 @@ connection "name2" do
     port 22
     user "user"
     host "127.0.0.1"
-    local ["8080","localhost","80"]
-    remote ["80","localhost","8080"]
+    local 8080,"localhost",80
+    remote 80,"localhost",8080
 end
 
 ##### other options that can be included into connection definition
